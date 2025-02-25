@@ -1,0 +1,64 @@
+function checkDuplicateMembership(executionContext) {
+    debugger
+        var formContext = executionContext.getFormContext(); // Get the form context
+        var eventArgs = executionContext.getEventArgs(); // Get event arguments for stopping the save
+    
+        if (!eventArgs) {
+            console.error("Execution context is missing event arguments.");
+            return;
+        }
+    
+        // Ensure this function only runs during the save operation
+        if (eventArgs.getSaveMode && eventArgs.getSaveMode() !== 1 && eventArgs.getSaveMode() !== 2) {
+            console.log("Function skipped: Not a save operation.");
+            return;
+        }
+    
+        var customerField = formContext.getAttribute("msnfp_customer").getValue();
+        var categoryField = formContext.getAttribute("bsk_categoryname").getValue();
+    
+        if (!customerField || !categoryField) {
+            console.warn("Customer or category field is missing.");
+            formContext.ui.setFormNotification("Please fill in both Customer and Category fields.", "WARNING");
+            return;
+        }
+    
+        var customerId = customerField[0].id.replace(/[{}]/g, "");
+        var categoryId = categoryField[0].id.replace(/[{}]/g, "");
+    
+        // Optimized OData query with $top=1
+        var query = `?$select=msnfp_membershipid&$filter=_msnfp_customer_value eq ${customerId} and _bsk_categoryname_value eq ${categoryId}&$top=1`;
+    
+        console.log("Checking for duplicate membership with query: ", query);
+    
+        // Use a synchronous XMLHttpRequest to ensure the save operation is blocked
+        var request = new XMLHttpRequest();
+        request.open("GET", Xrm.Utility.getGlobalContext().getClientUrl() + "/api/data/v9.2/msnfp_memberships" + query, false); // Synchronous request
+        request.setRequestHeader("OData-MaxVersion", "4.0");
+        request.setRequestHeader("OData-Version", "4.0");
+        request.setRequestHeader("Accept", "application/json");
+        request.setRequestHeader("Content-Type", "application/json; charset=utf-8");
+        request.setRequestHeader("Prefer", "odata.include-annotations=\"*\"");
+    
+        request.onreadystatechange = function () {
+            if (request.readyState === 4) {
+                if (request.status === 200) {
+                    var result = JSON.parse(request.responseText);
+                    console.log("Query Result: ", result);
+    
+                    if (result.value && result.value.length > 0) {
+                        var alertMessage = "This member already has a membership in this category. Duplicate membership is not allowed.";
+                        formContext.ui.setFormNotification(alertMessage, "ERROR");
+    
+                        // Prevent the form from saving
+                        eventArgs.preventDefault();
+                    }
+                } else {
+                    console.error("Error retrieving records: ", request.statusText);
+                    formContext.ui.setFormNotification("An error occurred while checking for duplicate membership. Please try again.", "ERROR");
+                }
+            }
+        };
+    
+        request.send();
+    }
