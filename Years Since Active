@@ -1,0 +1,44 @@
+function calculateYearsSinceSubscription(executionContext) {
+
+debugger
+    var formContext = executionContext.getFormContext();
+
+    var startDateField = formContext.getAttribute("msnfp_startdate").getValue(); // Start Date
+    var endDateField = formContext.getAttribute("msnfp_enddate").getValue(); // End Date (for inactive records)
+    var statusField = formContext.getAttribute("msnfp_membershipstatus").getValue(); // Membership Status
+    var yearsField = formContext.getAttribute("msnfp_yearssincesubscription"); // Field to store years
+
+    // Ensure required fields exist
+    if (!startDateField || statusField === null || !yearsField) {
+        return; // Exit if required fields are missing
+    }
+
+    var startDate = new Date(startDateField);
+    var today = new Date();
+    var referenceDate;
+
+    // Check Membership Status (1 = Active, 2 = Inactive)
+    if (statusField === 1) {
+        referenceDate = today; // Active: Compare with today's date
+    } else if (statusField === 2 && endDateField) {
+        referenceDate = new Date(endDateField); // Inactive: Compare with End Date
+    } else {
+        return; // Exit if no valid reference date
+    }
+
+    // Calculate difference in years
+    var yearsDiff = referenceDate.getFullYear() - startDate.getFullYear();
+
+    // Adjust if the anniversary hasn't passed in the current year
+    if (
+        referenceDate.getMonth() < startDate.getMonth() || 
+        (referenceDate.getMonth() === startDate.getMonth() && referenceDate.getDate() < startDate.getDate())
+    ) {
+        yearsDiff--;
+    }
+
+    // Store the result in bsk_yearssincesubscription
+    yearsField.setValue(yearsDiff);
+
+
+}
