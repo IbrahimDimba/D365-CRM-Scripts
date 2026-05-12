@@ -1,0 +1,49 @@
+function showForm(executionContext) {
+
+    var formContext = executionContext.getFormContext();
+
+    var caseType = formContext.getAttribute("casetypecode")?.getValue();
+    var caseOrigin = formContext.getAttribute("caseorigincode")?.getValue();
+    var preAuthType = formContext.getAttribute("jub_preauthtype");
+
+    var currentFormId = formContext.ui.formSelector.getCurrentItem().getId().toLowerCase();
+
+    var defaultForm = "915f6055-2e07-4276-ae08-2b96c8d02c57";
+    var emailPreAuthForm = "5fa89d1e-6adf-ee11-904c-000d3a6834af";
+    var preAuthForm = "25c7a556-dea9-4c81-88dd-f2e1a902eabc";
+
+    var targetFormId = defaultForm;
+
+    if (!caseType || !preAuthType) return;
+
+    var caseTypeValue = caseType.getValue();
+
+    if (caseType === 0 && caseOrigin === 2) {
+        targetFormId = emailPreAuthForm;
+    }
+    else if (caseType === 0 && caseOrigin !== 2) {
+        targetFormId = preAuthForm;
+    }
+    else if(caseType === 0 ){
+        targetFormId = preAuthForm;
+        preAuthType.setRequiredLevel("required");
+
+    }
+    else {
+        targetFormId = defaultForm;
+        preAuthType.setRequiredLevel("none");
+    }
+
+  
+    if (currentFormId !== targetFormId) {
+        var items = formContext.ui.formSelector.items.get();
+
+        for (var i in items) {
+            var item = items[i];
+            if (item.getId().toLowerCase() === targetFormId) {
+                item.navigate();
+                break;
+            }
+        }
+    }
+}
